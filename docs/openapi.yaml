@@ -1,0 +1,129 @@
+openapi: 3.0.2
+info:
+  title: EcoAlbum API
+  version: 1.0.0
+  description: REST API for species catalog management in Panama
+  contact:
+    name: EcoAlbum Team
+
+servers:
+  - url: http://localhost:8000/api
+    description: Development server
+  - url: https://api.ecoalbum.com
+    description: Production server
+
+paths:
+  /health/:
+    get:
+      summary: Health Check
+      description: Check API and database health status
+      tags:
+        - System
+      responses:
+        '200':
+          description: Healthy status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: healthy
+                  database:
+                    type: string
+                    example: connected
+                  timestamp:
+                    type: string
+                    format: date-time
+                  message:
+                    type: string
+                    example: All systems operational
+
+  /categories/:
+    get:
+      summary: List Categories
+      description: Get all species categories
+      tags:
+        - Categories
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+          description: Page number (default 1)
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Search by name
+      responses:
+        '200':
+          description: List of categories
+
+  /species/:
+    get:
+      summary: List Species
+      description: Get all species with filtering options
+      tags:
+        - Species
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: q
+          in: query
+          schema:
+            type: string
+          description: Search by common or scientific name
+        - name: category
+          in: query
+          schema:
+            type: string
+          description: Filter by category name
+        - name: risk_level
+          in: query
+          schema:
+            type: string
+            enum: [EX, EW, CR, EN, VU, NT, LC, DD, NE]
+          description: Filter by IUCN risk level
+        - name: endemic
+          in: query
+          schema:
+            type: boolean
+          description: Filter endemic species only
+        - name: ordering
+          in: query
+          schema:
+            type: string
+          description: Sort by field (e.g., -created_at, common_name)
+      responses:
+        '200':
+          description: List of species
+
+  /species/{id}/:
+    get:
+      summary: Get Species Detail
+      description: Get detailed information about a specific species
+      tags:
+        - Species
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Species detail
+        '404':
+          description: Species not found
+
+tags:
+  - name: System
+    description: System health checks
+  - name: Categories
+    description: Taxonomic categories management
+  - name: Species
+    description: Species catalog management
