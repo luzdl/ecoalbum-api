@@ -131,42 +131,83 @@ El servidor estará disponible en: `http://localhost:8000/`
 curl http://localhost:8000/api/health/
 ```
 
-#### Listar Categorías
+#### Fauna (Animales)
 ```bash
-curl http://localhost:8000/api/categories/
-```
-
-#### Buscar Especies
-```bash
-# Todas las especies
-curl http://localhost:8000/api/species/
+# Listar todos los animales
+curl http://localhost:8000/api/fauna/
 
 # Búsqueda por nombre
-curl "http://localhost:8000/api/species/?q=harpy"
+curl "http://localhost:8000/api/fauna/?q=aguila"
 
-# Filtrar por nivel de riesgo
-curl "http://localhost:8000/api/species/?risk_level=VU"
+# Filtrar por categoría (aves, mamiferos, etc)
+curl "http://localhost:8000/api/fauna/?categoria=1"
 
-# Filtrar endémicas
-curl "http://localhost:8000/api/species/?endemic=true"
+# Filtrar por estado de conservación (LC, NT, VU, EN, CR)
+curl "http://localhost:8000/api/fauna/?estado=VU"
+
+# Filtrar por letra inicial
+curl "http://localhost:8000/api/fauna/?letra=A"
 
 # Combinar filtros
-curl "http://localhost:8000/api/species/?q=eagle&risk_level=VU&endemic=true"
+curl "http://localhost:8000/api/fauna/?categoria=1&estado=EN&letra=H"
 
-# Ordenar resultados
-curl "http://localhost:8000/api/species/?ordering=-created_at"
+# Detalle de un animal
+curl http://localhost:8000/api/fauna/1/
+
+# Fotos de un animal
+curl http://localhost:8000/api/fauna/1/fotos/
+
+# Amenazas de un animal
+curl http://localhost:8000/api/fauna/1/amenazas/
+
+# Acciones de protección
+curl http://localhost:8000/api/fauna/1/acciones/
 ```
 
-#### Detalle de Especie
+#### Flora (Plantas)
 ```bash
-curl http://localhost:8000/api/species/1/
+# Listar todas las plantas
+curl http://localhost:8000/api/flora/
+
+# Búsqueda y filtros (igual que fauna)
+curl "http://localhost:8000/api/flora/?q=orquidea&estado=VU"
+
+# Detalle de una planta
+curl http://localhost:8000/api/flora/1/
+
+# Fotos de una planta
+curl http://localhost:8000/api/flora/1/fotos/
+```
+
+#### Catálogos de Soporte
+```bash
+# Categorías de fauna
+curl http://localhost:8000/api/categorias/
+
+# Amenazas
+curl http://localhost:8000/api/amenazas/
+
+# Acciones de protección
+curl http://localhost:8000/api/acciones-proteccion/
+```
+
+#### Galería (Carrusel)
+```bash
+# Fotos destacadas
+curl "http://localhost:8000/api/galeria/destacados/?limit=10"
+
+# Fotos aleatorias
+curl "http://localhost:8000/api/galeria/aleatorios/?limit=10&tipo=fauna"
+
+# Estadísticas
+curl http://localhost:8000/api/galeria/estadisticas/
 ```
 
 ### Documentación Interactiva
 
 - **Swagger UI**: http://localhost:8000/api/swagger/
-- **ReDoc**: http://localhost:8000/api/schema/
-- **OpenAPI JSON**: http://localhost:8000/api/schema/openapi.json
+- **ReDoc**: http://localhost:8000/api/docs/
+- **OpenAPI JSON**: http://localhost:8000/api/schema.json
 
 ## Estructura de Proyecto
 
@@ -179,24 +220,25 @@ ecoalbum-api/
 │   └── asgi.py            # ASGI para async
 ├── apps/
 │   ├── core/              # App sistema (health check)
-│   │   ├── views.py
+│   │   └── views.py
+│   ├── fauna/             # App catálogo de animales
+│   │   ├── models.py      # Categoria, Animal, Fotos, Amenazas, Acciones
+│   │   ├── serializers.py # List/Detail serializers
+│   │   ├── filters.py     # Filtrado avanzado
+│   │   ├── views.py       # ViewSets con acciones anidadas
+│   │   ├── urls.py        # Routing fauna
+│   │   └── admin.py       # Admin config
+│   ├── flora/             # App catálogo de plantas
+│   │   ├── models.py      # Flora, FotoFlora
 │   │   ├── serializers.py
-│   │   ├── services.py
-│   │   ├── tests.py
-│   │   └── urls.py
-│   └── species/           # App catálogo de especies
-│       ├── models/
-│       │   ├── category.py
-│       │   └── species.py
-│       ├── serializers/
-│       │   ├── category_serializer.py
-│       │   └── species_serializer.py
-│       ├── views/
-│       │   ├── category_view.py
-│       │   └── species_view.py
-│       ├── filters.py     # Filtrado avanzado
-│       ├── services.py    # Lógica de negocio
-│       └── tests.py
+│   │   ├── filters.py
+│   │   ├── views.py
+│   │   ├── urls.py
+│   │   └── admin.py
+│   └── galeria/           # App galería/carrusel
+│       ├── views.py       # Destacados, Aleatorios, Estadisticas
+│       ├── serializers.py
+│       └── urls.py
 ├── db/
 │   ├── schema.sql         # Definición de tablas
 │   └── seed.sql           # Datos iniciales

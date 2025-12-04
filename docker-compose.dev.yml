@@ -1,0 +1,80 @@
+# Docker Compose para desarrollo con hot-reload
+# Ejecutar: docker-compose -f docker-compose.dev.yml up
+
+version: '3.8'
+
+services:
+  # ============================================
+  # SQL Server Database
+  # ============================================
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: ecoalbum-sqlserver-dev
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=${DB_PASSWORD}
+      - MSSQL_PID=Express
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqlserver_data_dev:/var/opt/mssql
+    networks:
+      - ecoalbum-network-dev
+    healthcheck:
+      test: /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$${MSSQL_SA_PASSWORD}" -C -Q "SELECT 1" || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  # ============================================
+  # Django API (desarrollo con hot-reload)
+  # ============================================
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ecoalbum-api-dev
+    environment:
+      - DB_ENGINE=${DB_ENGINE}
+      - DB_NAME=${DB_NAME}
+      - DB_HOST=sqlserver
+      - DB_PORT=1433
+      - DB_USER=sa
+      - DB_PASSWORD=${DB_PASSWORD}
+      - SECRET_KEY=${SECRET_KEY}
+      - DEBUG=True
+      - ALLOWED_HOSTS=*
+      - CORS_ALLOW_ALL=True
+      - API_URL=${API_URL}
+    ports:
+      - "8000:8000"
+    volumes:
+      # Monta el código fuente para hot-reload
+      - .:/app
+      - /app/venv
+      - /app/__pycache__
+    networks:
+      - ecoalbum-network-dev
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    command: >
+      sh -c "python scripts/wait-for-db.py && 
+             python manage.py migrate --noinput && 
+             python manage.py runserver 0.0.0.0:8000"
+
+# ============================================
+# Volumes
+# ============================================
+volumes:
+  sqlserver_data_dev:
+    name: ecoalbum-sqlserver-data-dev
+
+# ============================================
+# Networks
+# ============================================
+networks:
+  ecoalbum-network-dev:
+    name: ecoalbum-network-dev
+    driver: bridge

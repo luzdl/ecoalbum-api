@@ -1,7 +1,7 @@
 from django.apps import AppConfig
 
 
-class CoreConfig(AppConfig):
+class FaunaConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
-    name = 'apps.core'
-    verbose_name = 'Core'
+    name = 'apps.fauna'
+    verbose_name = 'Fauna (Animales)'

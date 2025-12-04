@@ -24,8 +24,11 @@ INSTALLED_APPS = [
     'django_filters',
     'corsheaders',
     
+    # Project apps
     'apps.core',
-    'apps.species',
+    'apps.fauna',
+    'apps.flora',
+    'apps.galeria',
 ]
 
 MIDDLEWARE = [
@@ -69,7 +72,7 @@ DATABASES = {
         'PASSWORD': config('DB_PASSWORD'),
         'OPTIONS': {
             'driver': 'ODBC Driver 18 for SQL Server',
-            'TrustServerCertificate': 'yes',
+            'extra_params': 'TrustServerCertificate=yes;Encrypt=no',
         }
     }
 }
