@@ -22,9 +22,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get update \
     && ACCEPT_EULA=Y apt-get install -y --no-install-recommends \
         msodbcsql18 \
+        mssql-tools18 \
         unixodbc-dev \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
+
+# Agregar sqlcmd al PATH
+ENV PATH="$PATH:/opt/mssql-tools18/bin"
 
 # ============================================
 # Stage 2: Dependencias de Python
@@ -55,6 +59,7 @@ COPY --chown=django:django . .
 
 # Copiar script de espera para la base de datos
 COPY --chown=django:django scripts/wait-for-db.py /app/scripts/
+COPY --chown=django:django scripts/seed-db.py /app/scripts/
 
 # Crear directorio para archivos estáticos
 RUN mkdir -p /app/staticfiles && chown django:django /app/staticfiles
@@ -66,4 +71,4 @@ USER django
 EXPOSE 8000
 
 # Comando por defecto
-CMD ["sh", "-c", "python scripts/wait-for-db.py && python manage.py migrate --noinput && python manage.py runserver 0.0.0.0:8000"]
+CMD ["sh", "-c", "python scripts/wait-for-db.py && python manage.py makemigrations --noinput && python manage.py migrate --noinput && python scripts/seed-db.py || true && python manage.py runserver 0.0.0.0:8000"]

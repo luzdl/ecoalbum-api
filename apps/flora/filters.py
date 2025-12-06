@@ -1,7 +1,7 @@
 """Flora filters for advanced querying"""
 import django_filters
 from django.db import models
-from .models import Flora, EstadoConservacionFlora
+from .models import Flora
 
 
 class FloraFilter(django_filters.FilterSet):
@@ -12,7 +12,7 @@ class FloraFilter(django_filters.FilterSet):
     
     # Filter by conservation status
     estado = django_filters.ChoiceFilter(
-        choices=EstadoConservacionFlora.choices,
+        choices=Flora.ESTADO_CHOICES,
         label='Estado de conservación'
     )
     

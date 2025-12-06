@@ -41,6 +41,7 @@ services:
     volumes:
       - ./apps:/app/apps
       - ./ecoalbum_api:/app/ecoalbum_api
+      - ./db:/app/db
     restart: unless-stopped
 
 volumes:

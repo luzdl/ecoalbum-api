@@ -1,13 +1,14 @@
 """Fauna filters"""
 from django_filters import rest_framework as filters
-from .models import Animal, EstadoConservacion
+from django.db import models
+from .models import Animal
 
 
 class AnimalFilter(filters.FilterSet):
     """Advanced filtering for animals"""
     q = filters.CharFilter(method='search_filter', label='Búsqueda')
     categoria = filters.CharFilter(field_name='categoria__nombre', lookup_expr='iexact')
-    estado = filters.ChoiceFilter(choices=EstadoConservacion.choices)
+    estado = filters.ChoiceFilter(choices=Animal.ESTADO_CHOICES)
     letra = filters.CharFilter(method='letra_filter', label='Filtro alfabético')
     
     class Meta:
@@ -26,7 +27,3 @@ class AnimalFilter(filters.FilterSet):
         if value:
             return queryset.filter(nombre_comun__istartswith=value[0])
         return queryset
-
-
-# Import models.Q for the search filter
-from django.db import models
