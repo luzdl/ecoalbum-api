@@ -10,8 +10,8 @@ import subprocess
 import pyodbc
 
 
-def check_data_exists():
-    """Verifica si ya hay datos en la base de datos."""
+def get_connection():
+    """Obtiene conexión a la base de datos."""
     db_host = os.environ.get('DB_HOST', 'localhost')
     db_port = os.environ.get('DB_PORT', '1433')
     db_user = os.environ.get('DB_USER', 'sa')
@@ -26,16 +26,78 @@ def check_data_exists():
         f"PWD={db_password};"
         f"TrustServerCertificate=yes;"
     )
-    
+    return pyodbc.connect(connection_string, timeout=10, autocommit=True)
+
+
+def check_all_data_exists():
+    """Verifica si TODAS las tablas tienen datos."""
     try:
-        conn = pyodbc.connect(connection_string, timeout=10, autocommit=True)
+        conn = get_connection()
         cursor = conn.cursor()
-        cursor.execute("SELECT COUNT(*) FROM Categoria")
-        count = cursor.fetchone()[0]
+        
+        tables_to_check = [
+            ('Categoria', 6),
+            ('Animal', 60),
+            ('FotoAnimal', 60),
+            ('Amenaza', 5),
+            ('AccionProteccion', 5),
+            ('Flora', 10),
+        ]
+        
+        for table, min_count in tables_to_check:
+            try:
+                cursor.execute(f"SELECT COUNT(*) FROM {table}")
+                count = cursor.fetchone()[0]
+                if count < min_count:
+                    cursor.close()
+                    conn.close()
+                    return False
+            except pyodbc.Error:
+                cursor.close()
+                conn.close()
+                return False
+        
         cursor.close()
         conn.close()
-        return count > 0
+        return True
     except pyodbc.Error:
+        return False
+
+
+def clear_tables():
+    """Vacía todas las tablas en orden correcto (respetando FK)."""
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        
+        # Orden inverso para respetar foreign keys
+        tables_to_clear = [
+            'AnimalAccionProteccion',
+            'AnimalAmenaza',
+            'FotoFlora',
+            'FotoAnimal',
+            'Flora',
+            'AccionProteccion',
+            'Amenaza',
+            'Animal',
+            'Categoria',
+        ]
+        
+        for table in tables_to_clear:
+            try:
+                cursor.execute(f"DELETE FROM {table}")
+                # Reset identity
+                cursor.execute(f"DBCC CHECKIDENT ('{table}', RESEED, 0)")
+            except pyodbc.Error as e:
+                # Tabla puede no existir aún
+                pass
+        
+        cursor.close()
+        conn.close()
+        print("🗑️ Tablas vaciadas para re-seeding.")
+        return True
+    except pyodbc.Error as e:
+        print(f"⚠️ Error limpiando tablas: {e}")
         return False
 
 
@@ -53,10 +115,14 @@ def run_seed():
         print("⚠️ Archivo seed.sql no encontrado. Saltando seeding.")
         return True
     
-    # Verificar si ya hay datos
-    if check_data_exists():
-        print("ℹ️ La base de datos ya tiene datos. Saltando seeding.")
+    # Verificar si TODAS las tablas tienen datos suficientes
+    if check_all_data_exists():
+        print("ℹ️ La base de datos ya tiene todos los datos. Saltando seeding.")
         return True
+    
+    # Limpiar tablas antes de insertar para evitar duplicados
+    print("🧹 Limpiando tablas para seeding limpio...")
+    clear_tables()
     
     print("🌱 Ejecutando seeding de la base de datos...")
     
@@ -78,6 +144,8 @@ def run_seed():
             print("✅ Seeding completado exitosamente.")
         else:
             print("⚠️ Seeding completado con advertencias.")
+            if result.stderr:
+                print(f"   Detalles: {result.stderr[:200]}")
         return True
         
     except FileNotFoundError:

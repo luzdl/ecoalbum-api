@@ -57,9 +57,10 @@ RUN addgroup --system --gid 1001 django \
 # Copiar el código de la aplicación
 COPY --chown=django:django . .
 
-# Copiar script de espera para la base de datos
+# Copiar scripts de utilidades
 COPY --chown=django:django scripts/wait-for-db.py /app/scripts/
 COPY --chown=django:django scripts/seed-db.py /app/scripts/
+COPY --chown=django:django scripts/init-db.py /app/scripts/
 
 # Crear directorio para archivos estáticos
 RUN mkdir -p /app/staticfiles && chown django:django /app/staticfiles
@@ -70,5 +71,5 @@ USER django
 # Puerto de la aplicación
 EXPOSE 8000
 
-# Comando por defecto
-CMD ["sh", "-c", "python scripts/wait-for-db.py && python manage.py makemigrations --noinput && python manage.py migrate --noinput && python scripts/seed-db.py || true && python manage.py runserver 0.0.0.0:8000"]
+# Comando por defecto - Ejecuta schema.sql primero, luego fake migrate, luego seed
+CMD ["sh", "-c", "python scripts/wait-for-db.py && python scripts/init-db.py && python manage.py runserver 0.0.0.0:8000"]
