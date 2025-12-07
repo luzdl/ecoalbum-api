@@ -24,6 +24,7 @@ def get_connection_string():
         f"UID={db_user};"
         f"PWD={db_password};"
         f"TrustServerCertificate=yes;"
+        f"Encrypt=no;"
     )
 
 
@@ -80,13 +81,7 @@ def data_exists():
 
 
 def run_sql_file(filename, description):
-    """Ejecuta un archivo SQL usando sqlcmd."""
-    db_host = os.environ.get('DB_HOST', 'localhost')
-    db_port = os.environ.get('DB_PORT', '1433')
-    db_user = os.environ.get('DB_USER', 'sa')
-    db_password = os.environ.get('DB_PASSWORD', '')
-    db_name = os.environ.get('DB_NAME', 'master')
-    
+    """Ejecuta un archivo SQL usando pyodbc para soporte correcto de UTF-8."""
     filepath = f'/app/db/{filename}'
     
     if not os.path.exists(filepath):
@@ -95,30 +90,87 @@ def run_sql_file(filename, description):
     
     print(f"📄 Ejecutando {description}...")
     
-    cmd = [
-        '/opt/mssql-tools18/bin/sqlcmd',
-        '-S', f'{db_host},{db_port}',
-        '-U', db_user,
-        '-P', db_password,
-        '-d', db_name,
-        '-C',
-        '-i', filepath
-    ]
-    
     try:
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
-        if result.returncode == 0:
-            print(f"✅ {description} completado.")
-            return True
+        # Leer el archivo SQL en UTF-8
+        with open(filepath, 'r', encoding='utf-8') as f:
+            sql_content = f.read()
+        
+        # Conectar a la base de datos con setencoding para Unicode
+        conn = pyodbc.connect(get_connection_string(), timeout=120, autocommit=True)
+        # Configurar encoding para Unicode correcto
+        conn.setdecoding(pyodbc.SQL_CHAR, encoding='utf-8')
+        conn.setdecoding(pyodbc.SQL_WCHAR, encoding='utf-8')
+        conn.setencoding(encoding='utf-8')
+        cursor = conn.cursor()
+        
+        import re
+        blocks = []
+        
+        # Verificar si hay separadores GO
+        if re.search(r'\nGO\s*\n', sql_content, re.IGNORECASE):
+            # Dividir por GO
+            blocks = re.split(r'\nGO\s*\n', sql_content, flags=re.IGNORECASE)
         else:
-            # Ignorar errores de "ya existe" para schema
-            if 'already an object' in result.stderr or 'already an object' in result.stdout:
-                print(f"ℹ️ {description} - tablas ya existían.")
-                return True
-            print(f"⚠️ {description} completado con advertencias.")
-            return True
+            # Para seed.sql sin GO, dividir por comentarios -- seguidos de INSERT
+            current_block = []
+            in_statement = False
+            
+            for line in sql_content.split('\n'):
+                stripped = line.strip()
+                
+                # Comentario que separa bloques (como --Aves, --Inserts, etc.)
+                if stripped.startswith('--') and len(stripped) > 2 and not stripped.startswith('-- '):
+                    if current_block and in_statement:
+                        blocks.append('\n'.join(current_block))
+                        current_block = []
+                        in_statement = False
+                    continue
+                
+                # Inicio de INSERT
+                if stripped.upper().startswith('INSERT INTO'):
+                    if current_block and in_statement:
+                        blocks.append('\n'.join(current_block))
+                        current_block = []
+                    in_statement = True
+                
+                if in_statement:
+                    current_block.append(line)
+            
+            if current_block:
+                blocks.append('\n'.join(current_block))
+        
+        # Ejecutar cada bloque
+        executed = 0
+        errors = 0
+        for i, block in enumerate(blocks):
+            block_clean = block.strip()
+            if not block_clean:
+                continue
+            try:
+                cursor.execute(block_clean)
+                executed += 1
+            except pyodbc.Error as e:
+                error_msg = str(e)
+                # Ignorar errores de "ya existe"
+                if 'already' in error_msg.lower() or 'existe' in error_msg.lower():
+                    continue
+                # Para schema.sql, ignorar ciertos errores
+                if filename == 'schema.sql' and ('already' in error_msg.lower() or 'constraint' in error_msg.lower()):
+                    continue
+                errors += 1
+                if errors <= 5:  # Solo mostrar primeros 5 errores
+                    print(f"   ⚠️ Error en bloque {i+1}: {error_msg[:200]}")
+        
+        cursor.close()
+        conn.close()
+        
+        print(f"✅ {description} completado. ({executed} bloques ejecutados)")
+        return True
+        
     except Exception as e:
         print(f"❌ Error ejecutando {description}: {e}")
+        import traceback
+        traceback.print_exc()
         return False
 
 
