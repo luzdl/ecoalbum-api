@@ -50,12 +50,12 @@ class DestacadosView(APIView):
             fauna_fotos = FotoAnimal.objects.select_related('animal', 'animal__categoria')[:limit]
             for foto in fauna_fotos:
                 items.append({
-                    'id': foto.id,
+                    'id': foto.id_foto,
                     'tipo': 'fauna',
                     'nombre': foto.animal.nombre_comun,
                     'url_foto': foto.url_foto,
                     'descripcion_foto': foto.descripcion,
-                    'especie_id': foto.animal.id,
+                    'especie_id': foto.animal.id_animal,
                     'nombre_cientifico': foto.animal.nombre_cientifico,
                     'estado': foto.animal.estado
                 })
@@ -65,12 +65,12 @@ class DestacadosView(APIView):
             flora_fotos = FotoFlora.objects.select_related('planta')[:limit]
             for foto in flora_fotos:
                 items.append({
-                    'id': foto.id,
+                    'id': foto.id_foto,
                     'tipo': 'flora',
                     'nombre': foto.planta.nombre_comun,
                     'url_foto': foto.url_foto,
                     'descripcion_foto': foto.descripcion,
-                    'especie_id': foto.planta.id,
+                    'especie_id': foto.planta.id_planta,
                     'nombre_cientifico': foto.planta.nombre_cientifico,
                     'estado': foto.planta.estado
                 })
@@ -122,21 +122,21 @@ class AleatoriosView(APIView):
             if fauna_count > 0:
                 # Use random IDs for better performance than ORDER BY RAND()
                 fauna_limit = limit if tipo == 'fauna' else half_limit
-                fauna_ids = list(FotoAnimal.objects.values_list('id', flat=True))
+                fauna_ids = list(FotoAnimal.objects.values_list('id_foto', flat=True))
                 random_fauna_ids = random.sample(fauna_ids, min(fauna_limit, len(fauna_ids)))
                 
                 fauna_fotos = FotoAnimal.objects.filter(
-                    id__in=random_fauna_ids
+                    id_foto__in=random_fauna_ids
                 ).select_related('animal', 'animal__categoria')
                 
                 for foto in fauna_fotos:
                     items.append({
-                        'id': foto.id,
+                        'id': foto.id_foto,
                         'tipo': 'fauna',
                         'nombre': foto.animal.nombre_comun,
                         'url_foto': foto.url_foto,
                         'descripcion_foto': foto.descripcion,
-                        'especie_id': foto.animal.id,
+                        'especie_id': foto.animal.id_animal,
                         'nombre_cientifico': foto.animal.nombre_cientifico,
                         'estado': foto.animal.estado
                     })
@@ -146,21 +146,21 @@ class AleatoriosView(APIView):
             flora_count = FotoFlora.objects.count()
             if flora_count > 0:
                 flora_limit = limit if tipo == 'flora' else half_limit
-                flora_ids = list(FotoFlora.objects.values_list('id', flat=True))
+                flora_ids = list(FotoFlora.objects.values_list('id_foto', flat=True))
                 random_flora_ids = random.sample(flora_ids, min(flora_limit, len(flora_ids)))
                 
                 flora_fotos = FotoFlora.objects.filter(
-                    id__in=random_flora_ids
+                    id_foto__in=random_flora_ids
                 ).select_related('planta')
                 
                 for foto in flora_fotos:
                     items.append({
-                        'id': foto.id,
+                        'id': foto.id_foto,
                         'tipo': 'flora',
                         'nombre': foto.planta.nombre_comun,
                         'url_foto': foto.url_foto,
                         'descripcion_foto': foto.descripcion,
-                        'especie_id': foto.planta.id,
+                        'especie_id': foto.planta.id_planta,
                         'nombre_cientifico': foto.planta.nombre_cientifico,
                         'estado': foto.planta.estado
                     })
